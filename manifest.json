@@ -2,7 +2,7 @@
   "name": "fugue",
   "short_name": "fugue",
   "description": "more text, less editor",
-  "start_url": "/",
+  "start_url": "./",
   "display": "fullscreen",
   "background_color": "#1d1712",
   "theme_color": "#1d1712",
@@ -10,7 +10,7 @@
   "icons": [
     {
       "src": "resources/icon.png",
-      "sizes": "160x160",
+      "sizes": "200x200",
       "type": "image/png",
       "purpose": "any maskable"
     }
