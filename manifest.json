@@ -10,7 +10,7 @@
   "icons": [
     {
       "src": "resources/icon.png",
-      "sizes": "200x200",
+      "sizes": "220x220",
       "type": "image/png",
       "purpose": "any maskable"
     }
