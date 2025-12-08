@@ -238,6 +238,15 @@
         URL.revokeObjectURL(url);
         hasUnsavedChanges = false;
       }
+      // Disable cut, copy, paste, select all
+      if ((e.metaKey || e.ctrlKey) && ['x', 'c', 'v', 'a'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+      }
+    });
+
+    // Also block via clipboard events
+    ['cut', 'copy', 'paste'].forEach(event => {
+      input.addEventListener(event, (e) => e.preventDefault());
     });
 
     window.addEventListener('beforeunload', (e) => {
