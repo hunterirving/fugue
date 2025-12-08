@@ -227,11 +227,14 @@
     input.addEventListener('keydown', (e) => {
       if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const filename = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
         const blob = new Blob([fullText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'writing.txt';
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
         hasUnsavedChanges = false;
