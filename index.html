@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕</text></svg>">
+  <title>fugue</title>
+  <style>
+    @font-face {
+      font-family: 'Special Elite';
+      src: url('Special_Elite/SpecialElite-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    :root {
+      --fade-duration: 10s;
+
+      /* light mode */
+      --parchment: #e5e1db;
+      --vellum: #b5b1a8;
+      --ink: #262629;
+
+      /* dark mode */
+      --bean: #1d1712;
+      --roast: #16110d;
+      --foam: #bfae94;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(to bottom, var(--bean), var(--roast));
+      color: var(--foam);
+      font-family: 'Special Elite', monospace;
+      font-size: 32px;
+      line-height: 1.6;
+      word-spacing: 0.3em;
+      caret-color: transparent;
+      cursor: none;
+    }
+
+    @media (prefers-color-scheme: light) {
+      html, body {
+        background: linear-gradient(to bottom, var(--parchment), var(--vellum));
+        color: var(--ink);
+      }
+    }
+
+    #writer {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0 2rem;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-100%);
+      user-select: none;
+    }
+
+    .line {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      min-height: 1.6em;
+      color: transparent;
+    }
+
+    .char {
+      color: var(--foam);
+      transition: opacity var(--fade-duration) ease-in-out, filter var(--fade-duration) linear;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .char {
+        color: var(--ink);
+      }
+    }
+
+    .char.fade {
+      opacity: 0;
+      filter: blur(2px);
+    }
+
+    #input {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+    }
+
+    @media print {
+      html, body {
+        height: auto;
+        overflow: visible;
+        font-size: 14pt;
+      }
+      #writer {
+        position: static;
+        transform: none;
+        height: auto;
+        padding: 0;
+      }
+      .line {
+        color: #000 !important;
+      }
+      .char, .char.fade {
+        opacity: 1 !important;
+        filter: none !important;
+        color: #000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="writer"></div>
+  <textarea id="input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+  <script>
+    const writer = document.getElementById('writer');
+    const input = document.getElementById('input');
+    const fadeDuration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fade-duration')) * 1000;
+    let lines = [''];
+    let lineElements = [];
+    let fullText = '';
+    let hasUnsavedChanges = false;
+
+    function createLine() {
+      const line = document.createElement('div');
+      line.className = 'line';
+      writer.appendChild(line);
+      lineElements.push(line);
+      return line;
+    }
+
+    function getCurrentLine() {
+      if (lineElements.length === 0) createLine();
+      return lineElements[lineElements.length - 1];
+    }
+
+    function addChar(char) {
+      const span = document.createElement('span');
+      span.className = 'char';
+      span.textContent = char;
+      span.dataset.expires = Date.now() + fadeDuration;
+      getCurrentLine().appendChild(span);
+      requestAnimationFrame(() => span.classList.add('fade'));
+      setTimeout(() => span.replaceWith(char), fadeDuration);
+    }
+
+    function newLine() {
+      lines.push('');
+      const line = createLine();
+      line.dataset.expires = Date.now() + fadeDuration;
+    }
+
+    function canDelete(el) {
+      return el && Date.now() < parseInt(el.dataset.expires);
+    }
+
+    function deleteChar() {
+      const currentLine = lineElements[lineElements.length - 1];
+      const lastChar = currentLine?.lastElementChild;
+
+      if (canDelete(lastChar)) {
+        lastChar.remove();
+        lines[lines.length - 1] = lines[lines.length - 1].slice(0, -1);
+        fullText = fullText.slice(0, -1);
+        input.value = fullText;
+        return true;
+      }
+
+      if (lines.length > 1 && currentLine && !currentLine.hasChildNodes() && canDelete(currentLine)) {
+        currentLine.remove();
+        lineElements.pop();
+        lines.pop();
+        fullText = fullText.slice(0, -1);
+        input.value = fullText;
+        return true;
+      }
+
+      return false;
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        deleteChar();
+        return;
+      }
+    });
+
+    input.addEventListener('input', (e) => {
+      const newText = input.value;
+      if (newText.length < fullText.length) {
+        input.value = fullText;
+        return;
+      }
+      const added = newText.slice(fullText.length);
+
+      for (const char of added) {
+        if (char === '\n') {
+          newLine();
+        } else {
+          lines[lines.length - 1] += char;
+          addChar(char);
+        }
+      }
+
+      fullText = newText;
+      hasUnsavedChanges = true;
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const blob = new Blob([fullText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'writing.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+        hasUnsavedChanges = false;
+      }
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('click', () => input.focus());
+    input.focus();
+  </script>
+</body>
+</html>
