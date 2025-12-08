@@ -80,18 +80,12 @@
 
     .char {
       color: var(--foam);
-      transition: opacity var(--fade-duration) ease-in-out, filter var(--fade-duration) linear;
     }
 
     @media (prefers-color-scheme: light) {
       .char {
         color: var(--ink);
       }
-    }
-
-    .char.fade {
-      opacity: 0;
-      filter: blur(2px);
     }
 
     #input {
@@ -116,7 +110,7 @@
       .line {
         color: #000 !important;
       }
-      .char, .char.fade {
+      .char {
         opacity: 1 !important;
         filter: none !important;
         color: #000 !important;
@@ -156,7 +150,10 @@
       span.textContent = char;
       span.dataset.expires = Date.now() + fadeDuration;
       getCurrentLine().appendChild(span);
-      requestAnimationFrame(() => span.classList.add('fade'));
+      span.animate([
+        { opacity: 1, filter: 'blur(0px)' },
+        { opacity: 0, filter: 'blur(2px)' }
+      ], { duration: fadeDuration, easing: 'ease-in-out', fill: 'forwards' });
       setTimeout(() => span.replaceWith(char), fadeDuration);
     }
 
