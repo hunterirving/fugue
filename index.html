@@ -39,7 +39,13 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bean);
+    }
+
+    body {
       height: 100%;
       overflow: hidden;
       background: linear-gradient(to bottom, var(--bean), var(--roast));
@@ -53,7 +59,10 @@
     }
 
     @media (prefers-color-scheme: light) {
-      html, body {
+      html {
+        background: var(--parchment);
+      }
+      body {
         background: linear-gradient(to bottom, var(--parchment), var(--vellum));
         color: var(--ink);
       }
@@ -69,6 +78,15 @@
       top: 50%;
       transform: translateY(-100%);
       user-select: none;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 24px;
+      }
+      #writer {
+        padding: 0 1rem;
+      }
     }
 
     .line {
