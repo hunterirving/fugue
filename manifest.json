@@ -3,7 +3,7 @@
   "short_name": "fugue",
   "description": "more text, less editor",
   "start_url": "./",
-  "display": "fullscreen",
+  "display": "standalone",
   "background_color": "#1d1712",
   "theme_color": "#1d1712",
   "orientation": "any",
