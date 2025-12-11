@@ -98,6 +98,17 @@
 
     .char {
       color: var(--foam);
+      animation: fadeOut var(--fade-duration) ease-in-out forwards;
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; filter: blur(0px); }
+      to { opacity: 0; filter: blur(2px); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; filter: blur(2px); }
+      to { opacity: 1; filter: blur(0px); }
     }
 
     @media (prefers-color-scheme: light) {
@@ -128,10 +139,14 @@
       .line {
         color: #000 !important;
       }
-      .char {
+      .line .char {
         opacity: 1 !important;
         filter: none !important;
         color: #000 !important;
+        animation: none !important;
+      }
+      body > .char {
+        display: none !important;
       }
     }
   </style>
@@ -147,7 +162,42 @@
     let lines = [''];
     let lineElements = [];
     let fullText = '';
-    let hasUnsavedChanges = false;
+    let hasUserActivation = false;
+    const activateUser = (e) => {
+      if (e.type === 'keydown' && (e.metaKey || e.ctrlKey)) return;
+      hasUserActivation = true;
+    };
+    document.addEventListener('click', activateUser);
+    document.addEventListener('touchstart', activateUser);
+    document.addEventListener('keydown', activateUser);
+
+    let currentNotification = null;
+    let notificationTimeout = null;
+    function showNotification(message) {
+      if (notificationTimeout) clearTimeout(notificationTimeout);
+      if (currentNotification) {
+        currentNotification.dataset.dismissing = '';
+        currentNotification.style.animation = 'none';
+        currentNotification.offsetHeight;
+        currentNotification.style.opacity = '1';
+        currentNotification.style.filter = 'blur(0px)';
+        currentNotification.style.animation = 'fadeOut var(--fade-duration) ease-in-out forwards';
+      } else {
+        const notification = document.createElement('div');
+        notification.className = 'char';
+        notification.textContent = message;
+        notification.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:pre-line;width:max-content;animation:fadeIn 0.2s ease-in-out forwards, fadeOut var(--fade-duration) ease-in-out 0.2s forwards;';
+        document.body.appendChild(notification);
+        currentNotification = notification;
+      }
+      const notification = currentNotification;
+      notificationTimeout = setTimeout(() => {
+        if (currentNotification === notification) {
+          notification.remove();
+          currentNotification = null;
+        }
+      }, fadeDuration + 200);
+    }
 
     function createLine() {
       const line = document.createElement('div');
@@ -168,10 +218,6 @@
       span.textContent = char;
       span.dataset.expires = Date.now() + fadeDuration;
       getCurrentLine().appendChild(span);
-      span.animate([
-        { opacity: 1, filter: 'blur(0px)' },
-        { opacity: 0, filter: 'blur(2px)' }
-      ], { duration: fadeDuration, easing: 'ease-in-out', fill: 'forwards' });
       setTimeout(() => span.replaceWith(char), fadeDuration);
     }
 
@@ -229,6 +275,19 @@
       }
       const added = newText.slice(fullText.length);
 
+      if (currentNotification && !currentNotification.dataset.dismissing) {
+        currentNotification.dataset.dismissing = 'true';
+        currentNotification.style.animation = 'none';
+        currentNotification.offsetHeight;
+        currentNotification.style.animation = 'fadeOut 0.2s ease-in-out forwards';
+        const notification = currentNotification;
+        setTimeout(() => {
+          if (currentNotification === notification) {
+            notification.remove();
+            currentNotification = null;
+          }
+        }, 200);
+      }
       for (const char of added) {
         if (char === '\n') {
           newLine();
@@ -239,7 +298,6 @@
       }
 
       fullText = newText;
-      hasUnsavedChanges = true;
     });
 
     input.addEventListener('keydown', (e) => {
@@ -255,7 +313,78 @@
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
-        hasUnsavedChanges = false;
+      }
+      if (e.key === 'o' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (!hasUserActivation) {
+          showNotification('for security, browsers require page interaction before opening files.\ninteract with the page, then try again.');
+          return;
+        }
+        if (fullText.length > 0) {
+          if (!confirm('opening a file will replace your current text. continue?')) {
+            return;
+          }
+        }
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'text/*,.txt,.md';
+        fileInput.onchange = () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const text = e.target.result;
+            const importText = () => {
+              writer.innerHTML = '';
+              lines = [''];
+              lineElements = [];
+              fullText = '';
+              const importedSpans = [];
+              const fileLines = text.split('\n');
+              fileLines.forEach((lineText, index) => {
+                if (index > 0) {
+                  lines.push('');
+                  createLine();
+                  fullText += '\n';
+                }
+                if (lineText.length > 0) {
+                  const span = document.createElement('span');
+                  span.className = 'char';
+                  span.textContent = lineText;
+                  span.style.animation = 'fadeIn 0.2s ease-in-out forwards';
+                  getCurrentLine().appendChild(span);
+                  importedSpans.push(span);
+                  lines[lines.length - 1] += lineText;
+                  fullText += lineText;
+                }
+              });
+              input.value = fullText;
+              setTimeout(() => {
+                importedSpans.forEach(span => {
+                  span.style.animation = 'fadeOut var(--fade-duration) ease-in-out forwards';
+                  setTimeout(() => span.replaceWith(span.textContent), fadeDuration);
+                });
+              }, 200);
+            };
+            if (currentNotification) {
+              if (notificationTimeout) clearTimeout(notificationTimeout);
+              currentNotification.dataset.dismissing = 'true';
+              currentNotification.style.animation = 'none';
+              currentNotification.offsetHeight;
+              currentNotification.style.animation = 'fadeOut 0.2s ease-in-out forwards';
+              const notification = currentNotification;
+              setTimeout(() => {
+                notification.remove();
+                if (currentNotification === notification) currentNotification = null;
+                importText();
+              }, 200);
+            } else {
+              importText();
+            }
+          };
+          reader.readAsText(file);
+        };
+        fileInput.click();
       }
       // Disable cut, copy, paste, select all
       if ((e.metaKey || e.ctrlKey) && ['x', 'c', 'v', 'a'].includes(e.key.toLowerCase())) {
@@ -269,7 +398,7 @@
     });
 
     window.addEventListener('beforeunload', (e) => {
-      if (hasUnsavedChanges) {
+      if (fullText.length > 0) {
         e.preventDefault();
       }
     });
